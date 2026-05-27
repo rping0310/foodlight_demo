@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>食光圖鑑</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="食光圖鑑">
+<meta name="theme-color" content="#FAF6F0">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%23B8895A'/%3E%3Ctext x='90' y='105' text-anchor='middle' font-size='90'%3E🍱%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAF6F0; --card:#fff; --ink:#2B2418; --muted:#A89B8A; --soft:#6B5D4D;
+  --accent:#B8895A; --accent-d:#8B6239; --accent-s:#E8D5BD;
+  --green:#7BA05B; --yellow:#E8A93D; --red:#D17559;
+  --line:rgba(43,36,24,.08);
+  --sh:0 2px 12px rgba(43,36,24,.07);
+  --r:20px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto Sans TC',-apple-system,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;user-select:none}
+
+/* ── Layout ── */
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+#screens{flex:1;position:relative;overflow:hidden}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  padding-top:calc(var(--safe-t) + 56px);
+  padding-bottom:calc(var(--safe-b) + 72px);
+  opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity .28s,transform .28s}
+.screen::-webkit-scrollbar{display:none}
+.screen.on{opacity:1;pointer-events:auto;transform:none}
+
+/* ── Tab bar ── */
+#tabs{
+  flex-shrink:0;
+  display:flex;align-items:flex-start;justify-content:space-around;
+  padding:10px 4px calc(var(--safe-b) + 8px);
+  background:rgba(250,246,240,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--line)
+}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 2px;cursor:pointer;color:var(--muted);transition:color .18s}
+.tb.on{color:var(--accent-d)}
+.tb svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tb span{font-size:10px;font-weight:500}
+
+/* ── Common ── */
+.ph{padding:8px 20px 4px;display:flex;justify-content:space-between;align-items:flex-start}
+.ptitle{font-family:'DM Serif Display',serif;font-size:38px;color:var(--ink);line-height:1;letter-spacing:-1px}
+.psub{font-size:13px;color:var(--muted);margin-top:4px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh)}
+.sec{margin:12px 16px 0}
+.pill{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600}
+.pill-g{background:rgba(123,160,91,.15);color:var(--green)}
+.pill-y{background:rgba(232,169,61,.15);color:#C8891D}
+.pill-r{background:rgba(209,117,89,.15);color:var(--red)}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:var(--card);box-shadow:var(--sh);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.icon-btn svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:2}
+
+/* ── Calendar ── */
+.cal-wrap{margin:10px 16px 0;padding:18px 12px;background:var(--card);border-radius:var(--r);box-shadow:var(--sh)}
+.wdays{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:8px}
+.wdays span{text-align:center;font-size:12px;color:var(--muted);font-weight:500}
+.dgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;background:rgba(232,213,189,.15);cursor:pointer;transition:transform .12s}
+.day:active{transform:scale(.9)}
+.day.empty{background:transparent;cursor:default;pointer-events:none}
+.day.dim{opacity:.15;pointer-events:none}
+.day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.day .dn{position:absolute;top:2px;left:4px;font-size:8px;color:var(--muted);font-weight:500;z-index:2}
+.day svg{width:76%;height:76%;filter:drop-shadow(0 2px 3px rgba(43,36,24,.12))}
+
+/* ── Month summary ── */
+.msum{margin:12px 16px 0;padding:16px 20px;background:linear-gradient(135deg,var(--accent-s),#F5E6D3);border-radius:var(--r);display:flex;justify-content:space-around;align-items:center}
+.msum-s .lbl{font-size:11px;color:var(--accent-d);opacity:.7;letter-spacing:.5px}
+.msum-s .val{font-family:'DM Serif Display',serif;font-size:26px;color:var(--accent-d);margin-top:1px}
+.msum-div{width:1px;height:32px;background:rgba(139,98,57,.2)}
+
+/* ── Filter menu ── */
+.fmenu{position:absolute;top:90px;right:20px;background:var(--card);border-radius:16px;
+  box-shadow:0 8px 32px rgba(43,36,24,.18);padding:6px;min-width:170px;z-index:60;
+  opacity:0;pointer-events:none;transform:translateY(-6px) scale(.96);transition:all .18s;transform-origin:top right}
+.fmenu.on{opacity:1;pointer-events:auto;transform:none}
+.fi{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;font-size:13px;color:var(--ink)}
+.fi:active{background:var(--accent-s)}
+.fi.on{background:rgba(232,213,189,.4);font-weight:600}
+.fi .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.fi .ck{margin-left:auto;color:var(--accent-d);opacity:0}
+.fi.on .ck{opacity:1}
+
+/* ── Day Sheet ── */
+.sheet-back{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s}
+.sheet-back.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:82%;background:var(--bg);
+  border-radius:28px 28px 0 0;z-index:110;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);
+  padding-bottom:calc(var(--safe-b) + 16px)}
+.sheet::-webkit-scrollbar{display:none}
+.sheet.on{transform:none}
+.sheet-handle{width:38px;height:4px;background:var(--muted);opacity:.3;border-radius:2px;margin:10px auto 0}
+
+/* ── Day sheet content ── */
+.sh-head{padding:16px 20px 12px;display:flex;justify-content:space-between;align-items:flex-start}
+.sh-date{font-family:'DM Serif Display',serif;font-size:28px;color:var(--ink)}
+.sh-day{font-size:12px;color:var(--muted);margin-top:3px;letter-spacing:.5px}
+.grade-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'DM Serif Display',serif;font-size:22px;color:#fff}
+.sh-nums{margin:0 16px;background:var(--card);border-radius:16px;padding:14px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;box-shadow:var(--sh)}
+.sh-num{text-align:center}
+.sh-num .v{font-family:'DM Serif Display',serif;font-size:18px;color:var(--ink)}
+.sh-num .v small{font-size:9px;color:var(--muted)}
+.sh-num .l{font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.3px}
+.sh-comment{margin:10px 16px 0;padding:12px 14px;border-radius:12px;border-left:3px solid;font-size:12px;line-height:1.5}
+.sh-comment.g{background:rgba(123,160,91,.1);border-color:var(--green)}
+.sh-comment.y{background:rgba(232,169,61,.1);border-color:var(--yellow)}
+.sh-comment.r{background:rgba(209,117,89,.1);border-color:var(--red)}
+.meals-lbl{margin:16px 20px 8px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px}
+.meal-row{margin:0 16px 8px;background:var(--card);border-radius:16px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;box-shadow:var(--sh)}
+.meal-row .mtime{font-size:11px;color:var(--muted);width:38px;flex-shrink:0}
+.meal-row .ms{width:40px;height:40px;flex-shrink:0}
+.meal-row .ms svg{width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(43,36,24,.12))}
+.meal-row .mb{flex:1}
+.meal-row .mn{font-size:13px;font-weight:600;color:var(--ink)}
+.meal-row .mk{font-size:11px;color:var(--muted);margin-top:1px}
+.meal-row .ldot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+/* ── Capture ── */
+.food-preview{margin:12px 16px 0;height:260px;border-radius:var(--r);
+  background:linear-gradient(135deg,#3a2f24,#5c4a36);position:relative;overflow:hidden;box-shadow:var(--sh)}
+.food-preview .fi-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.scan-status{position:absolute;top:16px;left:50%;transform:translateX(-50%);
+  padding:5px 12px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);border-radius:20px;
+  color:#fff;font-size:11px;letter-spacing:.8px;display:flex;align-items:center;gap:6px}
+.pulse{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pu 1.4s infinite}
+@keyframes pu{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
+.scan-frame{position:absolute;inset:28px;border:1.5px dashed rgba(255,255,255,.35);border-radius:16px}
+.scan-frame::before,.scan-frame::after{content:'';position:absolute;width:20px;height:20px;border:2.5px solid var(--accent)}
+.scan-frame::before{top:-2px;left:-2px;border-right:none;border-bottom:none;border-top-left-radius:6px}
+.scan-frame::after{bottom:-2px;right:-2px;border-left:none;border-top:none;border-bottom-right-radius:6px}
+.res-card{margin:12px 16px 0;background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.res-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.res-name{font-family:'Noto Serif TC',serif;font-size:20px;font-weight:700}
+.res-name small{display:block;font-family:'Noto Sans TC',sans-serif;font-size:11px;color:var(--muted);margin-top:3px;font-weight:400}
+.tl{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 12px rgba(232,169,61,.4)}
+.nuts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.nut{text-align:center;padding:8px 2px;background:rgba(232,213,189,.22);border-radius:10px}
+.nut .v{font-family:'DM Serif Display',serif;font-size:16px;color:var(--ink)}
+.nut .v small{font-size:9px;color:var(--muted)}
+.nut .l{font-size:9px;color:var(--muted);margin-top:3px}
+.ai-msg{padding:11px 13px;background:rgba(232,169,61,.1);border-radius:10px;border-left:3px solid var(--yellow);font-size:12px;line-height:1.5}
+.fix-pill{margin:10px 16px 0;padding:13px 16px;background:#fdf5e8;border-radius:16px;
+  display:flex;align-items:center;gap:10px;cursor:pointer}
+.fix-pill .fp-ico{font-size:22px}
+.fix-pill .fp-txt{flex:1;font-size:12px;line-height:1.4;color:var(--accent-d)}
+.fix-pill .fp-arr{color:var(--muted);font-size:16px}
+
+/* ── Stats ── */
+.cat-row{margin:10px 16px 0;display:flex;gap:8px;overflow-x:auto;padding:2px 0}
+.cat-row::-webkit-scrollbar{display:none}
+.cat{flex-shrink:0;padding:6px 14px;background:var(--card);border-radius:16px;font-size:12px;
+  color:var(--soft);cursor:pointer;box-shadow:var(--sh);border:1.5px solid transparent;transition:all .18s;
+  display:flex;align-items:center;gap:5px}
+.cat.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.collage{margin:10px 16px 0;height:200px;background:var(--card);border-radius:var(--r);
+  position:relative;overflow:hidden;box-shadow:var(--sh)}
+.gyro-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:var(--muted);letter-spacing:1px;opacity:.7;
+  padding:3px 10px;background:rgba(255,255,255,.7);border-radius:8px;cursor:pointer;z-index:5;white-space:nowrap}
+.csticker{position:absolute;will-change:transform;filter:drop-shadow(0 3px 5px rgba(43,36,24,.12))}
+.st-cards{margin:10px 16px 0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.st-card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
+.st-card .lbl{font-size:11px;color:var(--muted);letter-spacing:.5px}
+.st-card .val{font-family:'DM Serif Display',serif;font-size:28px;color:var(--ink);line-height:1.1;margin-top:3px}
+.st-card .unit{font-size:13px;color:var(--muted);margin-left:2px}
+.wide{grid-column:1/-1}
+.pop-row{display:flex;align-items:center;gap:12px;margin-top:6px}
+.pop-ico{width:44px;height:44px;background:var(--accent-s);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px}
+.pop-name{font-family:'DM Serif Display',serif;font-size:22px;color:var(--accent-d)}
+.bar-chart{margin:10px 0 0;display:flex;align-items:flex-end;gap:3px;height:80px}
+.bar{flex:1;background:var(--accent-s);border-radius:3px 3px 0 0;position:relative}
+.bar.pk{background:linear-gradient(180deg,var(--accent),var(--accent-d))}
+.bar.pk::before{content:attr(data-v);position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--accent-d);font-weight:600}
+.bar-lbls{display:flex;margin-top:6px}
+.bar-lbls span{flex:1;text-align:center;font-size:9px;color:var(--muted)}
+
+/* ── Suggest ── */
+.notif{margin:12px 16px 0;background:var(--ink);color:#fff;border-radius:var(--r);padding:14px 16px;
+  display:flex;align-items:center;gap:12px}
+.notif .ico{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent-d));
+  border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.notif .nt{flex:1}
+.notif .na{font-size:10px;opacity:.6;letter-spacing:.8px}
+.notif .nm{font-size:13px;font-weight:600;margin-top:1px}
+.notif .ntime{font-size:10px;opacity:.4}
+.sug-h{margin:16px 20px 0}
+.sug-h .g{font-size:12px;color:var(--muted)}
+.sug-h h1{font-family:'DM Serif Display',serif;font-size:28px;color:var(--ink);line-height:1.2;margin-top:3px;font-weight:400}
+.sug-h h1 em{font-style:italic;color:var(--accent-d)}
+.gap-row{margin:12px 16px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gap-c{background:var(--card);border-radius:16px;padding:12px 8px;box-shadow:var(--sh);text-align:center}
+.gap-c .gn{font-size:10px;color:var(--muted);margin-bottom:4px}
+.gap-c .gv{font-family:'DM Serif Display',serif;font-size:18px;color:var(--ink)}
+.gap-c .gv small{font-size:10px;color:var(--muted)}
+.gap-c .gbar{height:3px;background:var(--accent-s);border-radius:2px;margin-top:6px;overflow:hidden}
+.gap-c .gbar div{height:100%;background:var(--accent);border-radius:2px}
+.gap-c.low .gbar div{background:var(--red)}
+.rlbl{margin:16px 20px 8px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px}
+.rec{margin:0 16px 10px;background:var(--card);border-radius:16px;padding:14px;
+  display:flex;align-items:center;gap:12px;box-shadow:var(--sh);cursor:pointer}
+.rec:active{transform:scale(.98)}
+.rec .rico{width:46px;height:46px;border-radius:12px;background:var(--accent-s);
+  display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.rec .rb{flex:1}
+.rec .rn{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700}
+.rec .rm{display:flex;gap:10px;margin-top:3px;font-size:10px;color:var(--muted)}
+.rec .rm strong{color:var(--green);font-weight:600}
+.rec .ra{color:var(--muted);font-size:16px}
+
+/* ── Social ── */
+.stories{margin:10px 0 0;padding:0 16px;display:flex;gap:10px;overflow-x:auto}
+.stories::-webkit-scrollbar{display:none}
+.story-av{flex-shrink:0;width:60px;text-align:center;cursor:pointer}
+.story-av .ring{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-d));padding:2px;transition:transform .18s}
+.story-av:active .ring{transform:scale(.92)}
+.story-av .av-inner{width:100%;height:100%;border-radius:50%;background:var(--card);
+  display:flex;align-items:center;justify-content:center;font-size:24px;border:2px solid var(--card)}
+.story-av.you .ring{background:var(--muted)}
+.story-av.seen .ring{background:var(--muted);opacity:.45}
+.story-av .sname{font-size:10px;color:var(--soft);margin-top:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.post{margin:12px 16px 0;background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);cursor:pointer}
+.post:active{transform:scale(.99)}
+.post-h{padding:12px 14px;display:flex;align-items:center;gap:10px}
+.post-h .pav{width:34px;height:34px;border-radius:50%;background:var(--accent-s);
+  display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;flex-shrink:0}
+.post-h .pav .badge{position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;
+  background:var(--accent-d);border:1.5px solid var(--card);border-radius:50%;
+  color:#fff;font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.post-h .pi{flex:1}
+.post-h .pn{font-size:13px;font-weight:600}
+.post-h .pt{font-size:10px;color:var(--muted)}
+.post-img{height:200px;background:linear-gradient(135deg,#f5e6d3,#e8d5bd);
+  display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.mini-card{width:68%;height:82%;background:#fff;border-radius:14px;padding:12px;
+  box-shadow:0 8px 24px rgba(43,36,24,.12);display:flex;flex-direction:column}
+.mini-card .mct{font-family:'DM Serif Display',serif;font-size:16px;margin-bottom:6px}
+.mini-grid{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mini-grid div{border-radius:2px}
+.post-acts{padding:10px 14px;display:flex;gap:14px;font-size:12px;color:var(--soft)}
+
+/* ── Story Viewer ── */
+.story-viewer{position:absolute;inset:0;background:#111;z-index:200;opacity:0;pointer-events:none;transition:opacity .22s;display:flex;flex-direction:column}
+.story-viewer.on{opacity:1;pointer-events:auto}
+.sv-prog{display:flex;gap:4px;padding:calc(var(--safe-t) + 10px) 14px 6px}
+.sv-seg{flex:1;height:2.5px;background:rgba(255,255,255,.25);border-radius:2px;overflow:hidden}
+.sv-seg .sf{height:100%;background:#fff;width:0}
+.sv-seg.done .sf{width:100%}
+.sv-seg.cur .sf{width:100%;animation:svfill 5s linear forwards}
+@keyframes svfill{from{width:0}to{width:100%}}
+.sv-head{padding:6px 14px 10px;display:flex;align-items:center;gap:8px;color:#fff}
+.sv-av{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px}
+.sv-name{font-size:13px;font-weight:600;flex:1}
+.sv-x{font-size:22px;cursor:pointer;opacity:.8;padding:4px}
+.sv-body{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;position:relative}
+.sv-nav{position:absolute;top:0;bottom:0;width:45%;cursor:pointer}
+.sv-nav.l{left:0}
+.sv-nav.r{right:0}
+.sv-card{background:var(--bg);border-radius:20px;padding:20px;width:100%;max-width:320px}
+.sv-food-lbl{font-size:11px;color:var(--muted);text-align:center;letter-spacing:1px}
+.sv-food-name{font-family:'DM Serif Display',serif;font-size:26px;text-align:center;margin-top:4px}
+.sv-food-area{height:140px;background:linear-gradient(135deg,#fef0e0,#fdd8b8);border-radius:14px;margin:14px 0;display:flex;align-items:center;justify-content:center}
+.sv-stats{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding-top:12px}
+.sv-st .v{font-family:'DM Serif Display',serif;font-size:20px;text-align:center}
+.sv-st .l{font-size:10px;color:var(--muted);text-align:center;margin-top:2px}
+
+/* ── Setup ── */
+.setup-h{margin:16px 20px 0}
+.setup-h .step{font-size:12px;color:var(--muted);letter-spacing:1px}
+.setup-h h1{font-family:'DM Serif Display',serif;font-size:32px;color:var(--ink);line-height:1.2;margin-top:6px;font-weight:400}
+.setup-h h1 em{font-style:italic;color:var(--accent-d)}
+.setup-h p{font-size:13px;color:var(--soft);margin-top:10px;line-height:1.6}
+.setup-sec{margin:20px 16px 0}
+.setup-lbl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;margin-bottom:8px}
+.level-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lv-card{background:var(--card);border-radius:var(--r);padding:16px;cursor:pointer;
+  border:2px solid transparent;transition:all .18s;box-shadow:var(--sh)}
+.lv-card.on{border-color:var(--accent);background:linear-gradient(135deg,#fff,#fdf6ec)}
+.lv-card .ico{font-size:26px;margin-bottom:6px}
+.lv-card .t{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700}
+.lv-card .d{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+.goal-list{background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.gi{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--line)}
+.gi:last-child{border-bottom:none}
+.gi .gico{width:34px;height:34px;border-radius:9px;background:var(--accent-s);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.gi .gt{flex:1}
+.gi .gt .gtt{font-size:14px;font-weight:500}
+.gi .gt .gts{font-size:11px;color:var(--muted);margin-top:1px}
+.gi .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);flex-shrink:0;position:relative;transition:all .18s}
+.gi.on .radio{border-color:var(--accent);background:var(--accent)}
+.gi.on .radio::after{content:'';position:absolute;inset:3px;border-radius:50%;background:#fff}
+.cta{margin:20px 16px 0;width:calc(100% - 32px);padding:15px;background:var(--ink);color:#fff;
+  border:none;border-radius:14px;font-size:14px;font-weight:600;letter-spacing:.8px;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="screens">
+
+    <!-- ─── 同伴 ─── -->
+    <div class="screen on" data-s="social">
+      <div class="ph">
+        <div><div class="ptitle">同伴</div><div class="psub">看看朋友們今天吃了什麼</div></div>
+      </div>
+      <div class="stories" id="stories-row"></div>
+      <!-- album post -->
+      <div class="post" id="post-album">
+        <div class="post-h">
+          <div class="pav">🌸<div class="badge">8</div></div>
+          <div class="pi"><div class="pn">小婕 · Lv.8 圖鑑收藏家</div><div class="pt">2 小時前 · 分享了 5 月份圖鑑</div></div>
+          <span class="pill" style="background:rgba(184,137,90,.15);color:var(--accent-d)">月圖鑑</span>
+        </div>
+        <div class="post-img">
+          <div class="mini-card">
+            <div class="mct">5月 食光月曆</div>
+            <div class="mini-grid" id="post-mini"></div>
+          </div>
+        </div>
+        <div class="post-acts"><span>❤️ 24</span><span>💬 5</span><span>🎯 +5 戳一下</span></div>
+      </div>
+      <!-- single post -->
+      <div class="post">
+        <div class="post-h">
+          <div class="pav">🦊<div class="badge">5</div></div>
+          <div class="pi"><div class="pn">阿飽 · Lv.5 健康新星</div><div class="pt">5 小時前 · 午餐</div></div>
+          <span class="pill pill-y">黃燈 B</span>
+        </div>
+        <div class="post-img" style="background:linear-gradient(135deg,#fef0e0,#fdd8b8)">
+          <svg width="140" height="140" viewBox="0 0 200 200"><circle cx="100" cy="115" r="80" fill="#fff"/><circle cx="100" cy="115" r="72" fill="#FFF8E7"/><ellipse cx="100" cy="105" rx="55" ry="20" fill="#E8A93D" opacity=".4"/><path d="M50 100 Q60 90 70 100 T90 100 T110 100 T130 100 T150 100" stroke="#D4A574" stroke-width="3" fill="none"/><ellipse cx="115" cy="105" rx="14" ry="6" fill="#A0522D"/></svg>
+        </div>
+        <div class="post-acts"><span>❤️ 8</span><span>💬 1</span><span>🎯 戳一下</span></div>
+      </div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- ─── 圖鑑 ─── -->
+    <div class="screen" data-s="home">
+      <div class="ph">
+        <div><div class="ptitle">5月</div><div class="psub" id="cal-sub">2026 年 5 月 · 全部紀錄</div></div>
+        <div class="icon-btn" id="filter-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="2" fill="currentColor" stroke="none"/></svg></div>
+      </div>
+      <div class="fmenu" id="fmenu">
+        <div class="fi on" data-f="all"><div class="dot" style="background:linear-gradient(135deg,var(--green),var(--yellow),var(--red))"></div>全部<div class="ck">✓</div></div>
+        <div class="fi" data-f="green"><div class="dot" style="background:var(--green)"></div>只看綠燈日<div class="ck">✓</div></div>
+        <div class="fi" data-f="yellow"><div class="dot" style="background:var(--yellow)"></div>只看黃燈日<div class="ck">✓</div></div>
+        <div class="fi" data-f="red"><div class="dot" style="background:var(--red)"></div>只看紅燈日<div class="ck">✓</div></div>
+      </div>
+      <div class="cal-wrap">
+        <div class="wdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+        <div class="dgrid" id="dgrid"></div>
+      </div>
+      <div class="msum">
+        <div class="msum-s"><div class="lbl">本月打卡</div><div class="val">23<span style="font-size:14px">/31</span></div></div>
+        <div class="msum-div"></div>
+        <div class="msum-s"><div class="lbl">連續天數</div><div class="val">12<span style="font-size:14px"> 天</span></div></div>
+        <div class="msum-div"></div>
+        <div class="msum-s"><div class="lbl">平均評分</div><div class="val" style="color:var(--green)">A-</div></div>
+      </div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- ─── 拍照 ─── -->
+    <div class="screen" data-s="capture">
+      <div class="ph"><div><div class="ptitle">辨識結果</div><div class="psub">2026/05/19 · 午餐</div></div></div>
+      <div class="food-preview">
+        <div class="fi-inner">
+          <svg width="200" height="160" viewBox="0 0 220 180">
+            <rect x="30" y="50" width="160" height="110" rx="12" fill="#8B6239"/>
+            <rect x="36" y="56" width="148" height="98" rx="8" fill="#D4A574"/>
+            <rect x="42" y="62" width="62" height="86" rx="4" fill="#FFF8E7"/>
+            <circle cx="55" cy="80" r="3" fill="#000" opacity=".3"/><circle cx="75" cy="95" r="2.5" fill="#000" opacity=".3"/>
+            <ellipse cx="140" cy="80" rx="32" ry="18" fill="#A0522D"/><ellipse cx="140" cy="78" rx="28" ry="14" fill="#C47A3D"/>
+            <circle cx="125" cy="125" r="10" fill="#7BA05B"/><circle cx="145" cy="130" r="8" fill="#9CBF6E"/><circle cx="160" cy="120" r="9" fill="#7BA05B"/>
+          </svg>
+        </div>
+        <div class="scan-status"><div class="pulse"></div>AI 辨識完成</div>
+        <div class="scan-frame"></div>
+      </div>
+      <div class="res-card">
+        <div class="res-head">
+          <div class="res-name">排骨便當<small>BENTO · 約 720 kcal</small></div>
+          <div class="tl" style="background:var(--yellow)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 7v6M12 16v1"/></svg></div>
+        </div>
+        <div class="nuts">
+          <div class="nut"><div class="v">28<small>g</small></div><div class="l">蛋白質</div></div>
+          <div class="nut"><div class="v">82<small>g</small></div><div class="l">碳水</div></div>
+          <div class="nut"><div class="v">26<small>g</small></div><div class="l">脂肪</div></div>
+          <div class="nut"><div class="v">4<small>g</small></div><div class="l">纖維</div></div>
+        </div>
+        <div class="ai-msg"><strong>黃燈提醒</strong>　這餐稍微油膩，晚餐我們一起吃得清爽些吧！蔬菜量也建議再多一些。</div>
+      </div>
+      <div class="fix-pill"><div class="fp-ico">🔍</div><div class="fp-txt">辨識成「烤豬排」了？<br><strong>抓出 AI 的小辮子可獲 +5 點數</strong></div><div class="fp-arr">›</div></div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- ─── 建議 ─── -->
+    <div class="screen" data-s="suggest">
+      <div class="notif">
+        <div class="ico">🍱</div>
+        <div class="nt"><div class="na">食光圖鑑</div><div class="nm">該想想晚餐了！今天還缺一點蛋白質 💪</div></div>
+        <div class="ntime">18:02</div>
+      </div>
+      <div class="sug-h">
+        <div class="g">距離晚餐還有 30 分鐘</div>
+        <h1>今日缺<em>蛋白質</em><br>晚餐吃這個就好</h1>
+      </div>
+      <div class="gap-row">
+        <div class="gap-c low"><div class="gn">蛋白質</div><div class="gv">42<small>/80g</small></div><div class="gbar"><div style="width:52%"></div></div></div>
+        <div class="gap-c"><div class="gn">碳水</div><div class="gv">180<small>/220g</small></div><div class="gbar"><div style="width:82%"></div></div></div>
+        <div class="gap-c"><div class="gn">蔬菜</div><div class="gv">1<small>/3份</small></div><div class="gbar"><div style="width:33%"></div></div></div>
+      </div>
+      <div class="rlbl">傻瓜級加菜建議</div>
+      <div class="rec"><div class="rico">🥚</div><div class="rb"><div class="rn">一顆滷蛋</div><div class="rm"><span>+<strong>6g 蛋白質</strong></span><span>75 kcal</span></div></div><div class="ra">›</div></div>
+      <div class="rec"><div class="rico">🟫</div><div class="rb"><div class="rn">兩塊豆乾</div><div class="rm"><span>+<strong>10g 蛋白質</strong></span><span>110 kcal</span></div></div><div class="ra">›</div></div>
+      <div class="rec"><div class="rico">🥗</div><div class="rb"><div class="rn">燙地瓜葉</div><div class="rm"><span>+<strong>1 份蔬菜</strong></span><span>40 kcal</span></div></div><div class="ra">›</div></div>
+      <div class="rlbl">附近健康餐廳</div>
+      <div class="rec"><div class="rico" style="background:#e8f2dc">🥗</div><div class="rb"><div class="rn">健康廚房 · 雞胸餐盒</div><div class="rm"><span>280m</span><span><strong>蛋白質 35g</strong></span></div></div><div class="ra">›</div></div>
+      <div class="rec"><div class="rico" style="background:#fce8d8">🍲</div><div class="rb"><div class="rn">原味鍋物 · 蔬食湯鍋</div><div class="rm"><span>420m</span><span><strong>蔬菜 3 份</strong></span></div></div><div class="ra">›</div></div>
+      <div class="rec"><div class="rico" style="background:#e0eee0">🥙</div><div class="rb"><div class="rn">Subway · 烤雞胸潛艇堡</div><div class="rm"><span>510m</span><span><strong>蛋白質 28g</strong></span></div></div><div class="ra">›</div></div>
+      <div class="rec"><div class="rico" style="background:#f0e6d8">🍣</div><div class="rb"><div class="rn">爭鮮迴轉壽司 · 鮭魚定食</div><div class="rm"><span>650m</span><span><strong>蛋白質 32g</strong></span></div></div><div class="ra">›</div></div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- ─── 統計 ─── -->
+    <div class="screen" data-s="stats">
+      <div class="ph"><div><div class="ptitle">統計</div><div class="psub">2026 年 5 月</div></div></div>
+      <div class="cat-row">
+        <div class="cat on" data-c="all">🍽️ 全部</div>
+        <div class="cat" data-c="meal">🍱 餐點</div>
+        <div class="cat" data-c="drink">🥤 飲料</div>
+        <div class="cat" data-c="coffee">☕ 咖啡</div>
+        <div class="cat" data-c="tea">🧋 手搖</div>
+      </div>
+      <div class="collage" id="collage">
+        <div class="gyro-hint" id="gyro-hint">傾斜手機讓貼紙浮動</div>
+      </div>
+      <div class="st-cards" id="st-cards"></div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- ─── 我的 ─── -->
+    <div class="screen" data-s="setup">
+      <div class="setup-h">
+        <div class="step">STEP 01 / 03</div>
+        <h1>歡迎來到<br><em>食光圖鑑</em></h1>
+        <p>先告訴我們你的習慣，讓推播與建議更貼近你的生活。</p>
+      </div>
+      <div class="setup-sec">
+        <div class="setup-lbl">你的紀錄經驗</div>
+        <div class="level-grid">
+          <div class="lv-card on"><div class="ico">🌱</div><div class="t">新手</div><div class="d">第一次嘗試<br>簡化複雜欄位</div></div>
+          <div class="lv-card"><div class="ico">🏆</div><div class="t">老手</div><div class="d">熟悉飲食紀錄<br>解鎖進階設定</div></div>
+        </div>
+      </div>
+      <div class="setup-sec">
+        <div class="setup-lbl">本次主要目標</div>
+        <div class="goal-list">
+          <div class="gi on"><div class="gico">💪</div><div class="gt"><div class="gtt">增肌</div><div class="gts">著重蛋白質與訓練後補給</div></div><div class="radio"></div></div>
+          <div class="gi"><div class="gico">🔥</div><div class="gt"><div class="gtt">減脂</div><div class="gts">控制熱量赤字與糖分</div></div><div class="radio"></div></div>
+          <div class="gi"><div class="gico">📈</div><div class="gt"><div class="gtt">增重</div><div class="gts">穩定熱量盈餘與營養密度</div></div><div class="radio"></div></div>
+          <div class="gi"><div class="gico">📷</div><div class="gt"><div class="gtt">單純紀錄</div><div class="gts">無壓力，觀察飲食模式</div></div><div class="radio"></div></div>
+        </div>
+      </div>
+      <button class="cta">繼續　›</button>
+      <div style="height:8px"></div>
+    </div>
+
+  </div>
+
+  <!-- Tab bar -->
+  <div id="tabs">
+    <div class="tb on" data-t="social"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 20c0-2 2-4 4.5-4S22 18 22 20"/></svg><span>同伴</span></div>
+    <div class="tb" data-t="home"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 10h18M8 2v4M16 2v4"/></svg><span>圖鑑</span></div>
+    <div class="tb" data-t="capture"><svg viewBox="0 0 24 24"><path d="M3 8V6a2 2 0 012-2h2l2-2h6l2 2h2a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/><circle cx="12" cy="13" r="4"/></svg><span>拍照</span></div>
+    <div class="tb" data-t="suggest"><svg viewBox="0 0 24 24"><path d="M12 2v6m0 0a4 4 0 014 4v8H8v-8a4 4 0 014-4z"/><path d="M9 22h6"/></svg><span>建議</span></div>
+    <div class="tb" data-t="stats"><svg viewBox="0 0 24 24"><path d="M3 20V10M9 20V4M15 20v-8M21 20v-4"/></svg><span>統計</span></div>
+    <div class="tb" data-t="setup"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg><span>我的</span></div>
+  </div>
+</div>
+
+<!-- Day sheet -->
+<div class="sheet-back" id="sback"></div>
+<div class="sheet" id="dsheet">
+  <div class="sheet-handle"></div>
+  <div class="sh-head">
+    <div><div class="sh-date" id="shdate">5月 19日</div><div class="sh-day" id="shday">星期二 · 全日總評</div></div>
+    <div class="grade-circle" id="shgrade">A</div>
+  </div>
+  <div class="sh-nums">
+    <div class="sh-num"><div class="v" id="sh-kcal">1,820<small>kcal</small></div><div class="l">總熱量</div></div>
+    <div class="sh-num"><div class="v" id="sh-pro">68<small>g</small></div><div class="l">蛋白質</div></div>
+    <div class="sh-num"><div class="v" id="sh-veg">3<small>份</small></div><div class="l">蔬菜</div></div>
+    <div class="sh-num"><div class="v" id="sh-meals">3<small>餐</small></div><div class="l">紀錄餐數</div></div>
+  </div>
+  <div class="sh-comment g" id="shcmt"><strong>綠燈日</strong>　蛋白質與蔬菜攝取達標，飲食結構平衡，繼續保持！</div>
+  <div class="meals-lbl">當日餐點</div>
+  <div id="meals-list"></div>
+  <div style="height:12px"></div>
+</div>
+
+<!-- Story viewer -->
+<div class="story-viewer" id="sv">
+  <div class="sv-prog" id="sv-prog"></div>
+  <div class="sv-head">
+    <div class="sv-av" id="sv-av">🌸</div>
+    <div class="sv-name" id="sv-name">小婕</div>
+    <div class="sv-x" id="sv-x">✕</div>
+  </div>
+  <div class="sv-body">
+    <div class="sv-nav l" id="sv-prev"></div>
+    <div class="sv-nav r" id="sv-next"></div>
+    <div class="sv-card">
+      <div class="sv-food-lbl" id="sv-lbl">TODAY'S LUNCH</div>
+      <div class="sv-food-name" id="sv-fn">藜麥雞胸沙拉</div>
+      <div class="sv-food-area" id="sv-fa"></div>
+      <div class="sv-stats">
+        <div class="sv-st"><div class="v" id="sv-cal">420</div><div class="l">熱量 kcal</div></div>
+        <div class="sv-st"><div class="v" id="sv-pr">38g</div><div class="l">蛋白質</div></div>
+        <div class="sv-st"><div class="v" style="color:var(--green)" id="sv-gr">A</div><div class="l">評分</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Stickers ──────────────────────────────────────────────
+const S = {
+  bento:`<svg viewBox="0 0 60 60"><rect x="6" y="20" width="48" height="30" rx="4" fill="#8B6239"/><rect x="9" y="23" width="42" height="24" rx="3" fill="#D4A574"/><rect x="11" y="25" width="16" height="20" rx="2" fill="#FFF8E7"/><ellipse cx="40" cy="33" rx="9" ry="5" fill="#A0522D"/><circle cx="35" cy="42" r="3" fill="#7BA05B"/><circle cx="44" cy="42" r="3" fill="#9CBF6E"/></svg>`,
+  noodle:`<svg viewBox="0 0 60 60"><circle cx="30" cy="35" r="22" fill="#fff"/><circle cx="30" cy="35" r="18" fill="#FFF8E7"/><ellipse cx="30" cy="30" rx="14" ry="5" fill="#E8A93D" opacity=".5"/><path d="M18 30 Q22 26 26 30 T34 30 T42 30" stroke="#D4A574" stroke-width="1.5" fill="none"/><ellipse cx="35" cy="32" rx="4" ry="2" fill="#A0522D"/></svg>`,
+  salad:`<svg viewBox="0 0 60 60"><circle cx="30" cy="35" r="22" fill="#fff"/><circle cx="30" cy="35" r="18" fill="#F0F5E8"/><circle cx="25" cy="30" r="6" fill="#7BA05B"/><circle cx="35" cy="32" r="5" fill="#9CBF6E"/><circle cx="30" cy="40" r="5" fill="#7BA05B"/><circle cx="38" cy="38" r="3" fill="#E8A93D"/><circle cx="22" cy="38" r="3" fill="#D17559"/></svg>`,
+  egg:`<svg viewBox="0 0 60 60"><ellipse cx="30" cy="35" rx="18" ry="20" fill="#fff"/><circle cx="30" cy="35" r="9" fill="#E8A93D"/><circle cx="30" cy="35" r="6" fill="#F5C158"/></svg>`,
+  rice:`<svg viewBox="0 0 60 60"><path d="M14 30 Q14 50 30 50 Q46 50 46 30 Z" fill="#fff"/><path d="M16 32 Q16 48 30 48 Q44 48 44 32 Z" fill="#FFF8E7"/><circle cx="22" cy="34" r="1.5" fill="#000" opacity=".3"/><circle cx="30" cy="32" r="1.5" fill="#000" opacity=".3"/><circle cx="38" cy="34" r="1.5" fill="#000" opacity=".3"/><ellipse cx="30" cy="30" rx="14" ry="2" fill="#8B6239"/></svg>`,
+  sandwich:`<svg viewBox="0 0 60 60"><path d="M12 25 L48 25 L46 42 L14 42 Z" fill="#E8C896"/><rect x="14" y="30" width="32" height="3" fill="#7BA05B"/><rect x="14" y="34" width="32" height="4" fill="#D17559"/><path d="M12 25 L48 25 L46 22 L14 22 Z" fill="#E8C896"/></svg>`,
+  soup:`<svg viewBox="0 0 60 60"><path d="M14 32 Q14 50 30 50 Q46 50 46 32 Z" fill="#fff"/><path d="M16 34 Q16 48 30 48 Q44 48 44 34 Z" fill="#E8A93D" opacity=".5"/><circle cx="22" cy="38" r="3" fill="#D17559"/><circle cx="36" cy="36" r="3" fill="#7BA05B"/></svg>`,
+  fruit:`<svg viewBox="0 0 60 60"><circle cx="22" cy="35" r="11" fill="#D17559"/><circle cx="22" cy="32" r="2" fill="#fff" opacity=".4"/><circle cx="38" cy="38" r="9" fill="#7BA05B"/></svg>`,
+  // drink stickers
+  americano:`<svg viewBox="0 0 60 60"><path d="M18 16 L22 50 Q22 53 25 53 L35 53 Q38 53 38 50 L42 16 Z" fill="#fff" stroke="#3a2818" stroke-width="1"/><path d="M22 22 L24 48 L36 48 L38 22 Z" fill="#2a1808"/><ellipse cx="30" cy="22" rx="8" ry="2" fill="#1a1004"/></svg>`,
+  latte:`<svg viewBox="0 0 60 60"><path d="M18 16 L22 50 Q22 53 25 53 L35 53 Q38 53 38 50 L42 16 Z" fill="#fff" stroke="#B8895A" stroke-width="1"/><path d="M22 22 L24 48 L36 48 L38 22 Z" fill="#D4A574"/><ellipse cx="30" cy="22" rx="8" ry="2" fill="#FFF8E7"/></svg>`,
+  boba:`<svg viewBox="0 0 60 60"><path d="M20 14 L23 50 Q23 53 26 53 L34 53 Q37 53 37 50 L40 14 Z" fill="#fff" stroke="#8B6239" stroke-width="1"/><path d="M22 18 L25 48 L35 48 L38 18 Z" fill="#C99868"/><rect x="29" y="6" width="2" height="14" fill="#D17559"/><circle cx="26" cy="44" r="1.5" fill="#2a1808"/><circle cx="30" cy="46" r="1.5" fill="#2a1808"/><circle cx="34" cy="44" r="1.5" fill="#2a1808"/></svg>`,
+  iced:`<svg viewBox="0 0 60 60"><path d="M18 18 L22 50 Q22 53 25 53 L35 53 Q38 53 38 50 L42 18 Z" fill="#fff" stroke="#3a2818" stroke-width="1"/><path d="M22 24 L24 48 L36 48 L38 24 Z" fill="#5a3a1a"/><rect x="27" y="20" width="6" height="3" fill="#fff" opacity=".6"/><rect x="29" y="10" width="2" height="14" fill="#7BA05B"/></svg>`,
+  matcha:`<svg viewBox="0 0 60 60"><path d="M18 16 L22 50 Q22 53 25 53 L35 53 Q38 53 38 50 L42 16 Z" fill="#fff" stroke="#7BA05B" stroke-width="1"/><path d="M22 22 L24 48 L36 48 L38 22 Z" fill="#9CBF6E"/><ellipse cx="30" cy="22" rx="8" ry="2" fill="#7BA05B"/></svg>`,
+  smoothie:`<svg viewBox="0 0 60 60"><path d="M20 14 L23 50 Q23 53 26 53 L34 53 Q37 53 37 50 L40 14 Z" fill="#fff" stroke="#D17559" stroke-width="1"/><path d="M22 18 L25 48 L35 48 L38 18 Z" fill="#E89F8A"/><rect x="29" y="6" width="2" height="14" fill="#7BA05B"/></svg>`,
+  choc:`<svg viewBox="0 0 60 60"><path d="M14 26 Q14 50 30 50 Q46 50 46 26 Z" fill="#fff"/><path d="M16 28 Q16 48 30 48 Q44 48 44 28 Z" fill="#4a2810"/><ellipse cx="30" cy="28" rx="12" ry="3" fill="#E8C896"/><circle cx="26" cy="27" r="2" fill="#fff"/><circle cx="34" cy="27" r="2" fill="#fff"/></svg>`,
+};
+
+const mealKeys = ['bento','noodle','salad','egg','rice','sandwich','soup','fruit'];
+const drinkKeys = ['americano','latte','boba','iced','matcha','smoothie','choc','americano','latte','iced'];
+const coffeeKeys = ['americano','latte','iced','americano','latte','americano'];
+const teaKeys = ['boba','matcha','smoothie','boba','matcha'];
+
+// ── Day data ──────────────────────────────────────────────
+const TODAY = 19, DAYS = 31, OFFSET = 5; // May 2026 starts Friday
+const LIGHTS = 'GYGGRGYGGGYGRGGYGGGYGRGGYGGGYGG'.split('');
+const MEALS_DB = [
+  [{t:'08:30',n:'蛋餅+豆漿',cal:380,l:'G',si:'egg'},{t:'12:40',n:'雞胸藜麥碗',cal:520,l:'G',si:'salad'},{t:'19:00',n:'蔬菜湯+麵包',cal:450,l:'G',si:'soup'}],
+  [{t:'09:00',n:'美式咖啡',cal:5,l:'G',si:'americano'},{t:'13:00',n:'排骨便當',cal:720,l:'Y',si:'bento'},{t:'20:30',n:'滷味+珍奶',cal:850,l:'Y',si:'boba'}],
+  [{t:'08:00',n:'地瓜+水煮蛋',cal:340,l:'G',si:'egg'},{t:'12:30',n:'鮭魚定食',cal:580,l:'G',si:'rice'},{t:'18:30',n:'青菜雞肉',cal:420,l:'G',si:'salad'}],
+  [{t:'10:00',n:'吐司+起司',cal:320,l:'G',si:'sandwich'},{t:'14:00',n:'義大利麵',cal:680,l:'Y',si:'noodle'},{t:'21:00',n:'鹹酥雞+可樂',cal:980,l:'R',si:'bento'}],
+  [{t:'09:30',n:'燕麥牛奶',cal:280,l:'G',si:'rice'},{t:'12:00',n:'蔬食便當',cal:480,l:'G',si:'salad'}],
+];
+const LC = {G:'var(--green)',Y:'var(--yellow)',R:'var(--red)'};
+const LN = {G:'綠燈日',Y:'黃燈日',R:'紅燈日'};
+const LD = {G:'蛋白質與蔬菜攝取達標，飲食結構平衡，繼續保持！',Y:'蛋白質略低，脂肪偏高，但整體尚可，明天再加油。',R:'碳水過量、蔬菜不足，可能影響晚間精神狀態。'};
+
+// ── Calendar ──────────────────────────────────────────────
+let currentFilter = 'all';
+function buildCalendar(f){
+  currentFilter = f;
+  const g = document.getElementById('dgrid');
+  let h = '';
+  for(let i=0;i<OFFSET;i++) h+=`<div class="day empty"></div>`;
+  for(let d=1;d<=DAYS;d++){
+    const L=LIGHTS[d-1]||'G';
+    const hasSticker = d<=TODAY && (Math.random()>.15||d===TODAY);
+    const sk = hasSticker ? mealKeys[(d*7)%mealKeys.length] : '';
+    const dim = f!=='all' && d<=TODAY && ((f==='green'&&L!=='G')||(f==='yellow'&&L!=='Y')||(f==='red'&&L!=='R')) ? ' dim':'';
+    const td = d===TODAY?' today':'';
+    h+=`<div class="day${td}${dim}" data-d="${d}"><div class="dn">${d}</div>${sk?S[sk]:''}</div>`;
+  }
+  g.innerHTML=h;
+  g.querySelectorAll('.day[data-d]').forEach(el=>{
+    if(el.classList.contains('dim')) return;
+    el.addEventListener('click',()=>openSheet(+el.dataset.d));
+  });
+  const lbls={all:'全部紀錄',green:'只看綠燈日',yellow:'只看黃燈日',red:'只看紅燈日'};
+  document.getElementById('cal-sub').textContent=`2026 年 5 月 · ${lbls[f]}`;
+}
+buildCalendar('all');
+
+// filter menu
+const fbtn=document.getElementById('filter-btn'), fmenu=document.getElementById('fmenu');
+fbtn.addEventListener('click',e=>{e.stopPropagation();fmenu.classList.toggle('on')});
+document.addEventListener('click',()=>fmenu.classList.remove('on'));
+fmenu.querySelectorAll('.fi').forEach(fi=>{
+  fi.addEventListener('click',e=>{
+    e.stopPropagation();
+    fmenu.querySelectorAll('.fi').forEach(x=>x.classList.remove('on'));
+    fi.classList.add('on');
+    buildCalendar(fi.dataset.f);
+    fmenu.classList.remove('on');
+  });
+});
+
+// ── Day sheet ──────────────────────────────────────────────
+const sback=document.getElementById('sback'), dsheet=document.getElementById('dsheet');
+function openSheet(d){
+  const L=LIGHTS[d-1]||'G';
+  const meals=MEALS_DB[d%MEALS_DB.length];
+  const totalCal=meals.reduce((s,m)=>s+m.cal,0);
+  const wday=['日','一','二','三','四','五','六'][(OFFSET+d-1)%7];
+  document.getElementById('shdate').textContent=`5月 ${d} 日`;
+  document.getElementById('shday').textContent=`星期${wday} · ${LN[L]}`;
+  const gc=document.getElementById('shgrade');
+  gc.textContent={G:'A',Y:'B',R:'C'}[L];
+  gc.style.background=LC[L];
+  gc.style.boxShadow=`0 4px 12px ${LC[L]}55`;
+  document.getElementById('sh-kcal').innerHTML=`${totalCal}<small>kcal</small>`;
+  document.getElementById('sh-pro').innerHTML=`${L==='G'?68:L==='Y'?42:28}<small>g</small>`;
+  document.getElementById('sh-veg').innerHTML=`${L==='G'?3:L==='Y'?1:0}<small>份</small>`;
+  document.getElementById('sh-meals').innerHTML=`${meals.length}<small>餐</small>`;
+  const cmt=document.getElementById('shcmt');
+  cmt.className=`sh-comment ${L.toLowerCase()}`;
+  cmt.innerHTML=`<strong>${LN[L]}</strong>　${LD[L]}`;
+  let mh='';
+  meals.forEach(m=>{
+    mh+=`<div class="meal-row"><div class="mtime">${m.t}</div><div class="ms">${S[m.si]||''}</div><div class="mb"><div class="mn">${m.n}</div><div class="mk">${m.cal} kcal</div></div><div class="ldot" style="background:${LC[m.l]}"></div></div>`;
+  });
+  document.getElementById('meals-list').innerHTML=mh;
+  sback.classList.add('on');
+  dsheet.classList.add('on');
+}
+function closeSheet(){sback.classList.remove('on');dsheet.classList.remove('on');}
+sback.addEventListener('click',closeSheet);
+
+// ── Story viewer ──────────────────────────────────────────
+const storyData=[
+  {av:'🌸',name:'小婕',slides:[
+    {lbl:'TODAY\'S LUNCH',fn:'藜麥雞胸沙拉',cal:'420',pr:'38g',gr:'A',bg:'#F0F5E8',icon:S.salad},
+    {lbl:'MORNING',fn:'無糖美式',cal:'5',pr:'0g',gr:'A+',bg:'#FFF8E7',icon:S.americano},
+  ]},
+  {av:'🐱',name:'YuNing',slides:[
+    {lbl:'BREAKFAST',fn:'蛋餅+豆漿',cal:'380',pr:'22g',gr:'A',bg:'#FFF8E7',icon:S.egg},
+  ]},
+  {av:'🦊',name:'阿飽',slides:[
+    {lbl:'TODAY\'S LUNCH',fn:'排骨便當',cal:'720',pr:'28g',gr:'B',bg:'#FFF8E7',icon:S.bento},
+  ]},
+];
+let curS=0,curSlide=0,svTimer=null;
+const sv=document.getElementById('sv');
+
+function renderStory(){
+  const s=storyData[curS],sl=s.slides[curSlide];
+  document.getElementById('sv-av').textContent=s.av;
+  document.getElementById('sv-name').textContent=s.name;
+  document.getElementById('sv-lbl').textContent=sl.lbl;
+  document.getElementById('sv-fn').textContent=sl.fn;
+  document.getElementById('sv-cal').textContent=sl.cal;
+  document.getElementById('sv-pr').textContent=sl.pr;
+  document.getElementById('sv-gr').textContent=sl.gr;
+  document.getElementById('sv-fa').style.background=`linear-gradient(135deg,${sl.bg},#fdd8b8)`;
+  document.getElementById('sv-fa').innerHTML=`<div style="width:120px;height:120px">${sl.icon}</div>`;
+  const prog=document.getElementById('sv-prog');
+  prog.innerHTML=s.slides.map((_,i)=>`<div class="sv-seg ${i<curSlide?'done':i===curSlide?'cur':''}"><div class="sf"></div></div>`).join('');
+  clearTimeout(svTimer);
+  svTimer=setTimeout(nextSlide,5000);
+}
+function openStory(i){curS=i;curSlide=0;sv.classList.add('on');renderStory();}
+function closeStory(){sv.classList.remove('on');clearTimeout(svTimer);}
+function nextSlide(){
+  const s=storyData[curS];
+  if(curSlide<s.slides.length-1){curSlide++;renderStory();}
+  else if(curS<storyData.length-1){curS++;curSlide=0;renderStory();}
+  else closeStory();
+}
+function prevSlide(){
+  if(curSlide>0){curSlide--;renderStory();}
+  else if(curS>0){curS--;curSlide=storyData[curS].slides.length-1;renderStory();}
+}
+document.getElementById('sv-x').addEventListener('click',closeStory);
+document.getElementById('sv-next').addEventListener('click',nextSlide);
+document.getElementById('sv-prev').addEventListener('click',prevSlide);
+
+// Build stories row
+(()=>{
+  const sr=document.getElementById('stories-row');
+  let h=`<div class="story-av you"><div class="ring"><div class="av-inner">＋</div></div><div class="sname">你</div></div>`;
+  storyData.forEach((s,i)=>{h+=`<div class="story-av" data-si="${i}"><div class="ring"><div class="av-inner">${s.av}</div></div><div class="sname">${s.name}</div></div>`;});
+  h+=`<div class="story-av seen"><div class="ring"><div class="av-inner">🌿</div></div><div class="sname">林平</div></div>`;
+  h+=`<div class="story-av seen"><div class="ring"><div class="av-inner">🍓</div></div><div class="sname">昕愛</div></div>`;
+  sr.innerHTML=h;
+  sr.querySelectorAll('[data-si]').forEach(el=>el.addEventListener('click',()=>openStory(+el.dataset.si)));
+})();
+
+// Post album open → show sheet with month data
+document.getElementById('post-album').addEventListener('click',()=>{
+  // For simplicity open the month in 圖鑑 tab
+  switchTab('home');
+});
+
+// mini grid for post (light colors)
+(()=>{
+  const g=document.getElementById('post-mini');
+  let h='';
+  for(let i=0;i<OFFSET;i++) h+=`<div></div>`;
+  for(let d=1;d<=DAYS;d++){
+    const L=LIGHTS[d-1]||'G';
+    h+=`<div style="background:${d<=TODAY?LC[L]:'rgba(232,213,189,.35)'};border-radius:2px;"></div>`;
+  }
+  g.innerHTML=h;
+})();
+
+// ── Stats / Collage ──────────────────────────────────────
+const catData={
+  all:{keys:mealKeys,lbl:'總紀錄次數',val:'68',unit:'項',pop:'排骨便當',pico:'🍱',psub:'本月共 9 次'},
+  meal:{keys:mealKeys,lbl:'正餐總數',val:'52',unit:'餐',pop:'排骨便當',pico:'🍱',psub:'本月共 9 次'},
+  drink:{keys:drinkKeys,lbl:'本月總杯數',val:'28',unit:'杯',pop:'冰美式',pico:'☕',psub:'本月共 18 杯'},
+  coffee:{keys:coffeeKeys,lbl:'本月咖啡',val:'8',unit:'杯',pop:'冰美式',pico:'☕',psub:'本月共 6 杯'},
+  tea:{keys:teaKeys,lbl:'本月手搖',val:'6',unit:'杯',pop:'抹茶拿鐵',pico:'🧋',psub:'本月共 3 杯'},
+};
+const CPOS=[
+  {l:'6%',t:'14%',sz:64,r:-10,d:1.0},{l:'22%',t:'8%',sz:70,r:6,d:.7},
+  {l:'40%',t:'18%',sz:76,r:-4,d:1.2},{l:'60%',t:'6%',sz:66,r:8,d:.8},
+  {l:'78%',t:'14%',sz:72,r:-6,d:1.1},{l:'12%',t:'56%',sz:68,r:5,d:.9},
+  {l:'32%',t:'60%',sz:74,r:-8,d:1.3},{l:'54%',t:'58%',sz:70,r:4,d:.6},
+  {l:'72%',t:'56%',sz:72,r:-5,d:1.0},
+];
+const collage=document.getElementById('collage');
+let csEls=[];
+
+function buildCollage(cat){
+  const hint=collage.querySelector('.gyro-hint');
+  collage.innerHTML='';
+  collage.appendChild(hint);
+  csEls=[];
+  const keys=catData[cat].keys;
+  CPOS.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='csticker';
+    div.style.cssText=`left:${p.l};top:${p.t};width:${p.sz}px;height:${p.sz}px;transform:rotate(${p.r}deg)`;
+    div.dataset.r=p.r; div.dataset.d=p.d;
+    div.innerHTML=S[keys[i%keys.length]];
+    collage.appendChild(div);
+    csEls.push(div);
+  });
+}
+function buildCards(cat){
+  const c=catData[cat];
+  const bh=[40,65,55,95,70,45,60,80,50,75,35,65];
+  const pi=bh.indexOf(Math.max(...bh));
+  const bars=bh.map((h,i)=>`<div class="bar${i===pi?' pk':''}" ${i===pi?`data-v="${Math.ceil(h/30)}"`:''} style="height:${h}%"></div>`).join('');
+  document.getElementById('st-cards').innerHTML=`
+    <div class="st-card"><div class="lbl">${c.lbl}</div><div class="val">${c.val}<span class="unit">${c.unit}</span></div></div>
+    <div class="st-card"><div class="lbl">總花銷</div><div class="val">$1,895</div></div>
+    <div class="st-card wide"><div class="lbl">最常出現</div><div class="pop-row"><div class="pop-ico">${c.pico}</div><div><div class="pop-name">${c.pop}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${c.psub}</div></div></div></div>
+    <div class="st-card wide" style="padding:16px"><div class="lbl">每日紀錄數量</div><div class="bar-chart">${bars}</div><div class="bar-lbls"><span>1</span><span>3</span><span>5</span><span>7</span><span>9</span><span>11</span><span>13</span><span>15</span><span>17</span><span>19</span><span>21</span><span>23</span></div></div>`;
+}
+buildCollage('all');buildCards('all');
+document.querySelectorAll('.cat').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('.cat').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');
+    buildCollage(c.dataset.c);
+    buildCards(c.dataset.c);
+  });
+});
+
+// ── Gyroscope ─────────────────────────────────────────────
+let tx=0,ty=0,cx=0,cy=0,gyroOn=false,rafId=null;
+function animTilt(){
+  cx+=(tx-cx)*.08; cy+=(ty-cy)*.08;
+  csEls.forEach((el,i)=>{
+    const br=+el.dataset.r, dp=+el.dataset.d;
+    el.style.transform=`translate(${cx*18*dp}px,${cy*14*dp}px) rotate(${br+cx*6}deg)`;
+  });
+  rafId=requestAnimationFrame(animTilt);
+}
+animTilt();
+
+// Mouse fallback for desktop
+document.getElementById('collage').addEventListener('mousemove',e=>{
+  const r=collage.getBoundingClientRect();
+  tx=(e.clientX-r.left)/r.width*2-1;
+  ty=(e.clientY-r.top)/r.height*2-1;
+});
+document.getElementById('collage').addEventListener('mouseleave',()=>{tx=0;ty=0;});
+
+function onOrient(e){tx=Math.max(-1,Math.min(1,(e.gamma||0)/25));ty=Math.max(-1,Math.min(1,((e.beta||0)-30)/25));}
+function startGyro(){
+  if(gyroOn) return; gyroOn=true;
+  window.addEventListener('deviceorientation',onOrient,true);
+  const h=document.getElementById('gyro-hint');
+  if(h){h.textContent='陀螺儀已啟用 ✓';h.style.color='var(--green)';}
+}
+document.getElementById('gyro-hint').addEventListener('click',()=>{
+  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    DeviceOrientationEvent.requestPermission().then(s=>{if(s==='granted')startGyro();}).catch(()=>{});
+  } else startGyro();
+});
+if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission!=='function'){
+  // Android: auto-start
+  startGyro();
+}
+// iOS: auto-request on first tap while stats is visible
+document.addEventListener('touchstart',function iosAsk(){
+  const ss=document.querySelector('.screen[data-s="stats"]');
+  if(ss&&ss.classList.contains('on')){
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      DeviceOrientationEvent.requestPermission().then(s=>{if(s==='granted')startGyro();}).catch(()=>{});
+    }
+    document.removeEventListener('touchstart',iosAsk);
+  }
+},{passive:true});
+
+// ── Tab switching ─────────────────────────────────────────
+function switchTab(t){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.s===t));
+  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.querySelectorAll('.screen.on').forEach(s=>s.scrollTop=0);
+  closeSheet();
+}
+document.querySelectorAll('.tb').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.t)));
+
+// ── Setup interactions ────────────────────────────────────
+document.querySelectorAll('.lv-card').forEach(c=>{
+  c.addEventListener('click',()=>{document.querySelectorAll('.lv-card').forEach(x=>x.classList.remove('on'));c.classList.add('on');});
+});
+document.querySelectorAll('.gi').forEach(g=>{
+  g.addEventListener('click',()=>{document.querySelectorAll('.gi').forEach(x=>x.classList.remove('on'));g.classList.add('on');});
+});
+</script>
+</body>
+</html>

@@ -8,7 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="食光圖鑑">
 <meta name="theme-color" content="#FAF6F0">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%23B8895A'/%3E%3Ctext x='90' y='105' text-anchor='middle' font-size='90'%3E🍱%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#FAF6F0; --card:#fff; --ink:#2B2418; --muted:#A89B8A; --soft:#6B5D4D;
@@ -90,14 +91,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 .fi.on .ck{opacity:1}
 
 /* ── Day Sheet ── */
-.sheet-back{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s}
+.sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s}
 .sheet-back.on{opacity:1;pointer-events:auto}
-.sheet{position:absolute;left:0;right:0;bottom:0;max-height:82%;background:var(--bg);
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:82%;background:var(--bg);
   border-radius:28px 28px 0 0;z-index:110;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);
+  transform:translateY(110%);transition:transform .35s cubic-bezier(.32,.72,0,1);
   padding-bottom:calc(var(--safe-b) + 16px)}
 .sheet::-webkit-scrollbar{display:none}
-.sheet.on{transform:none}
+.sheet.on{transform:translateY(0)}
 .sheet-handle{width:38px;height:4px;background:var(--muted);opacity:.3;border-radius:2px;margin:10px auto 0}
 
 /* ── Day sheet content ── */
@@ -251,7 +252,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 .post-acts{padding:10px 14px;display:flex;gap:14px;font-size:12px;color:var(--soft)}
 
 /* ── Story Viewer ── */
-.story-viewer{position:absolute;inset:0;background:#111;z-index:200;opacity:0;pointer-events:none;transition:opacity .22s;display:flex;flex-direction:column}
+.story-viewer{position:fixed;inset:0;background:#111;z-index:220;opacity:0;pointer-events:none;transition:opacity .22s;display:flex;flex-direction:column}
 .story-viewer.on{opacity:1;pointer-events:auto}
 .sv-prog{display:flex;gap:4px;padding:calc(var(--safe-t) + 10px) 14px 6px}
 .sv-seg{flex:1;height:2.5px;background:rgba(255,255,255,.25);border-radius:2px;overflow:hidden}
@@ -640,7 +641,10 @@ function openSheet(d){
   sback.classList.add('on');
   dsheet.classList.add('on');
 }
-function closeSheet(){sback.classList.remove('on');dsheet.classList.remove('on');}
+function closeSheet(){
+  sback.classList.remove('on');
+  dsheet.classList.remove('on');
+}
 sback.addEventListener('click',closeSheet);
 
 // ── Story viewer ──────────────────────────────────────────
@@ -675,8 +679,8 @@ function renderStory(){
   clearTimeout(svTimer);
   svTimer=setTimeout(nextSlide,5000);
 }
-function openStory(i){curS=i;curSlide=0;sv.classList.add('on');renderStory();}
-function closeStory(){sv.classList.remove('on');clearTimeout(svTimer);}
+function openStory(i){closeSheet();curS=i;curSlide=0;sv.classList.add('on');renderStory();}
+function closeStory(){sv.classList.remove('on');clearTimeout(svTimer);tx=0;ty=0;}
 function nextSlide(){
   const s=storyData[curS];
   if(curSlide<s.slides.length-1){curSlide++;renderStory();}
@@ -824,10 +828,11 @@ document.addEventListener('touchstart',function iosAsk(){
 
 // ── Tab switching ─────────────────────────────────────────
 function switchTab(t){
+  closeSheet();
+  closeStory();
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.s===t));
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   document.querySelectorAll('.screen.on').forEach(s=>s.scrollTop=0);
-  closeSheet();
 }
 document.querySelectorAll('.tb').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.t)));
 
